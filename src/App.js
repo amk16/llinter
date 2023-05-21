@@ -1,53 +1,93 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 
 function App() {
-  const [inputTexts, setInputTexts] = useState([]);
-  const [generatedTexts, setGeneratedTexts] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [inputText, setInputText] = useState('');
 
-  const generateTexts = async () => {
-    const response = await fetch('http://localhost:5000/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ texts: inputTexts })
-    });
+  const inputRef = useRef(null);
 
-    const data = await response.json();
-    setGeneratedTexts(data.generated_text);
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, []);
+
+  const handleInputChange = (event) => {
+    setInputText(event.target.value);
   };
 
-  const handleInputChange = (index, value) => {
-    const newInputTexts = [...inputTexts];
-    newInputTexts[index] = value;
-    setInputTexts(newInputTexts);
+  const handleKeyDown = (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      if (inputText.trim() !== '') {
+        sendMessage();
+      }
+    }
   };
 
-  const addInputText = () => {
-    setInputTexts([...inputTexts, '']);
+  const sendMessage = async () => {
+    try {
+      if (inputText.trim() === '') return; // Check if input text is empty
+  
+      setMessages((prevMessages) => {
+        const updatedMessages = [
+          ...prevMessages,
+          { text: inputText, sender: 'user' },
+        ];
+        const chatHistory = updatedMessages.map((message) => message.text).join('\n');
+  
+        const sendRequest = async () => {
+          const response = await fetch('http://localhost:5000/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: chatHistory }),
+          });
+  
+          const data = await response.json();
+          const generatedText = data.generated_text;
+  
+          setMessages((prevMessages) => [
+            ...prevMessages,
+            ...generatedText.map((text) => ({ text, sender: 'bot' })),
+          ]);
+        };
+  
+        sendRequest();
+  
+        return updatedMessages;
+      });
+  
+      setInputText('');
+    } catch (error) {
+      console.error('Error:', error);
+    }
   };
-
-  const removeInputText = index => {
-    const newInputTexts = [...inputTexts];
-    newInputTexts.splice(index, 1);
-    setInputTexts(newInputTexts);
-  };
-
+    
   return (
     <div className="container">
-      <div className="input-col">
-        {inputTexts.map((inputText, index) => (
-          <div key={index}>
-            <input type="text" value={inputText} onChange={e => handleInputChange(index, e.target.value)} />
-            <button onClick={() => removeInputText(index)}>Remove</button>
+      <div className="messages">
+        {messages.map((message, index) => (
+          <div
+            key={index}
+            className={`message ${message.sender}`}
+          >
+            <div className="message-content">
+              {message.text}
+            </div>
           </div>
         ))}
-        <button onClick={addInputText}>Add input</button>
-        <button onClick={generateTexts}>Generate</button>
       </div>
-      <div className="output-col">
-        {generatedTexts.map((generatedText, index) => (
-          <p key={index}>{generatedText}</p>
-        ))}
+      <div className="input">
+        <input
+          ref={inputRef}
+          type="text"
+          value={inputText}
+          onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
+          placeholder="Type your message..."
+        />
+        <button onClick={sendMessage}>Send</button>
       </div>
     </div>
   );
