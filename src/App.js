@@ -4,6 +4,7 @@ import './App.css';
 function App() {
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const inputRef = useRef(null);
 
@@ -36,8 +37,9 @@ function App() {
           { text: inputText, sender: 'user' },
         ];
         const chatHistory = updatedMessages.map((message) => message.text).join('\n');
-  
+        console.log('sendingMessage function')
         const sendRequest = async () => {
+          console.log('sending request')
           const response = await fetch('http://localhost:5000/generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -63,14 +65,15 @@ function App() {
       console.error('Error:', error);
     }
   };
-    
+  
+
   return (
     <div className="container">
-      <div className="messages">
+      <div className="chat">
         {messages.map((message, index) => (
           <div
             key={index}
-            className={`message ${message.sender}`}
+            className={`message ${message.sender === 'user' ? 'user' : 'bot'}`}
           >
             <div className="message-content">
               {message.text}
@@ -87,8 +90,9 @@ function App() {
           onKeyDown={handleKeyDown}
           placeholder="Type your message..."
         />
-        <button onClick={sendMessage}>Send</button>
+        
       </div>
+      {isLoading && <div className="loading"></div>}
     </div>
   );
 }
